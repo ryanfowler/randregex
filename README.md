@@ -1,15 +1,34 @@
 # randregex
 
 `randregex` is a Go library for generating pseudo-random strings that match
-regular expressions.
+regular expressions. It is intended for test data, identifiers, fixtures,
+property-style checks, and other workflows where a compact regexp is a clearer
+way to describe valid sample strings than handwritten generation code.
 
-It is designed around one rule:
+## Evaluation Summary
 
-> Compile can fail. Generate cannot.
+Use `randregex` when you need:
 
-Parsing, validation, and conversion to an immutable generator happen up front.
-Once you have a `*randregex.Generator`, generation methods do not return
-errors.
+- A small Go package for producing strings that match Go regexp syntax.
+- A compile-once generator that can be reused safely across goroutines.
+- Deterministic output by supplying your own seeded `math/rand/v2.Rand`.
+- Low-allocation generation through caller-provided byte buffers.
+- Clear compile-time failures for unsupported or unsafe regexp constructs.
+
+Consider another approach when you need:
+
+- Cryptographically secure output from the default generator methods.
+- Uniform sampling across every possible string in a regexp language.
+- Full Unicode sampling for character classes.
+- Regex features not supported by Go's regexp engine, such as lookaround or
+  backreferences.
+
+## Requirements
+
+- Go module: `github.com/ryanfowler/randregex`
+- Go version: the module declares `go 1.25`
+- Runtime dependencies: none beyond the Go standard library
+- Regex parser: Go's `regexp/syntax` package with `syntax.Perl`
 
 ## Install
 
@@ -20,17 +39,58 @@ go get github.com/ryanfowler/randregex
 ## Quick Start
 
 ```go
-g, err := randregex.Compile(`[a-z]{8}\d{2}`, randregex.DefaultMaxRepeat)
-if err != nil {
-	log.Fatal(err)
-}
+package main
 
-fmt.Println(g.String())
+import (
+	"fmt"
+	"log"
+
+	"github.com/ryanfowler/randregex"
+)
+
+func main() {
+	g, err := randregex.Compile(`[a-z]{8}\d{2}`, randregex.DefaultMaxRepeat)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(g.String())
+}
 ```
 
-## Precompiled Generator
+## API Overview
 
-Compile once and reuse the generator:
+The public API is intentionally small:
+
+- `Compile(pattern string, maxRepeat int) (*Generator, error)` parses and
+  validates a regexp pattern.
+- `MustCompile(pattern string, maxRepeat int) *Generator` is suitable for
+  package-level generators and panics on invalid input.
+- `FromRegexp(re *syntax.Regexp, maxRepeat int) (*Generator, error)` compiles
+  an existing `regexp/syntax.Regexp` without mutating it.
+- `(*Generator).String() string` returns a generated string using the default
+  pseudo-random source.
+- `(*Generator).StringWithRand(r Rand) string` uses a caller-provided random
+  source.
+- `(*Generator).Append(dst []byte) []byte` appends generated output to a buffer.
+- `(*Generator).AppendWithRand(dst []byte, r Rand) []byte` combines buffer reuse
+  with a caller-provided random source.
+
+`DefaultMaxRepeat` is the recommended bound for unbounded repetitions:
+
+```go
+const DefaultMaxRepeat = 32
+```
+
+The main API keeps this policy explicit:
+
+```go
+g, err := randregex.Compile(pattern, randregex.DefaultMaxRepeat)
+```
+
+## Compile Once, Reuse Often
+
+Compile patterns once and reuse the generator:
 
 ```go
 var userID = randregex.MustCompile(`user-[a-z0-9]{12}`, randregex.DefaultMaxRepeat)
@@ -42,7 +102,7 @@ func newUserID() string {
 
 `*Generator` is immutable after construction and safe for concurrent use.
 
-## Deterministic Random
+## Reproducible Output
 
 Use `StringWithRand` or `AppendWithRand` with any value that satisfies:
 
@@ -52,26 +112,24 @@ type Rand interface {
 }
 ```
 
-This works with `math/rand/v2.Rand`:
+This interface is satisfied by `*math/rand/v2.Rand`:
 
 ```go
 r := rand.New(rand.NewPCG(1, 2))
-
 g := randregex.MustCompile(`[a-z]{8}`, randregex.DefaultMaxRepeat)
 
 fmt.Println(g.StringWithRand(r))
 ```
 
-If a `Rand` is shared across goroutines, the `Rand` implementation must be
-safe for concurrent use.
+If a `Rand` value is shared across goroutines, the `Rand` implementation must
+provide its own synchronization.
 
-## Append and Buffer Reuse
+## Buffer Reuse
 
 `Append` and `AppendWithRand` are the allocation-conscious APIs:
 
 ```go
 g := randregex.MustCompile(`[a-zA-Z0-9_-]{24}`, randregex.DefaultMaxRepeat)
-
 buf := make([]byte, 0, 64)
 
 for range 1000 {
@@ -102,13 +160,14 @@ Supported:
 - Dot `.`
 - Anchors as zero-width nodes: `^`, `$`, `\A`, `\z`, `\b`, `\B`
 
-Unsupported expressions return clear compile-time errors. Go's regexp syntax
-does not support lookaround or backreferences, so `randregex` does not either.
-Word-boundary assertions are accepted when the adjacent generated characters
-make the assertion guaranteed; patterns such as `a?\b` are rejected because one
-random branch would violate the assertion.
+Unsupported expressions return compile-time errors. Go's regexp syntax does not
+support lookaround or backreferences, so `randregex` does not either.
 
-## maxRepeat
+Word-boundary assertions are accepted only when the adjacent generated
+characters make the assertion guaranteed. For example, `\b[a-z]{4}\b` is valid,
+while `a?\b` is rejected because one random branch would violate the assertion.
+
+## Repetition Bounds
 
 `maxRepeat` controls unbounded repetitions:
 
@@ -121,19 +180,7 @@ random branch would violate the assertion.
 
 `maxRepeat` must be greater than or equal to zero.
 
-The package exposes:
-
-```go
-const DefaultMaxRepeat = 32
-```
-
-The main API stays explicit:
-
-```go
-g, err := randregex.Compile(pattern, randregex.DefaultMaxRepeat)
-```
-
-## ASCII-First Behavior
+## Character Generation
 
 Character generation is intentionally ASCII-first for performance,
 predictability, and testability.
@@ -147,19 +194,23 @@ predictability, and testability.
 - `\w` is `[0-9A-Za-z_]`.
 - `\s` is tab, newline, vertical tab, form feed, carriage return, and space.
 
-Full Unicode category sampling is intentionally out of scope for the first
-version.
+Full Unicode character-class sampling is intentionally out of scope. Use
+Unicode literals outside character classes when exact Unicode characters are
+needed.
 
 ## Randomness and Security
 
 The default methods use Go's pseudo-random `math/rand/v2` default source.
 Generated strings are not cryptographic secrets.
 
-For reproducible output, pass a seeded `math/rand/v2.Rand`. For security-sensitive
-use, provide a `Rand` implementation backed by an appropriate cryptographic
-source.
+For reproducible output, pass a seeded `math/rand/v2.Rand`. For
+security-sensitive use, provide a `Rand` implementation backed by an
+appropriate cryptographic source.
 
-## Performance Notes
+`randregex` samples choices locally at each regexp node. It does not attempt to
+provide a uniform distribution over all strings accepted by a pattern.
+
+## Performance Characteristics
 
 `randregex` compiles regular expressions into an immutable internal generator
 tree. Generation does not re-parse patterns or walk `regexp/syntax` trees.
@@ -170,4 +221,20 @@ The implementation:
 - Precomputes sampleable character sets.
 - Chooses alternation branches without generating unused branches.
 - Generates repetition counts once per repeat node.
-- Avoids reflection and required external runtime dependencies.
+- Avoids reflection and external runtime dependencies.
+
+Benchmarks are included in `randregex_benchmark_test.go` and can be run with:
+
+```sh
+go test -bench=. -benchmem ./...
+```
+
+## Error Handling Model
+
+Invalid patterns, unsupported regexp nodes, unsafe word-boundary assertions, and
+unsampleable character classes are rejected during compilation. Generation
+methods assume a valid compiled generator and therefore return only generated
+output.
+
+This design makes errors explicit at setup time and keeps hot-path generation
+simple.
