@@ -24,7 +24,7 @@ import (
 )
 
 func main() {
-	g, err := randregex.Compile(`[a-z]{8}\d{2}`, randregex.DefaultMaxRepeat)
+	g, err := randregex.Compile(`[a-z]{8}\d{2}`)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -37,12 +37,16 @@ func main() {
 
 The public API is intentionally small:
 
-- `Compile(pattern string, maxRepeat int) (*Generator, error)` parses and
-  validates a regexp pattern.
-- `MustCompile(pattern string, maxRepeat int) *Generator` is suitable for
-  package-level generators and panics on invalid input.
-- `FromRegexp(re *syntax.Regexp, maxRepeat int) (*Generator, error)` compiles
-  an existing `regexp/syntax.Regexp` without mutating it.
+- `Compile(pattern string) (*Generator, error)` parses and validates a regexp
+  pattern using `DefaultMaxRepeat`.
+- `CompileOptions(pattern string, opts Options) (*Generator, error)` parses and
+  validates a regexp pattern using caller-provided options.
+- `MustCompile(pattern string) *Generator` is suitable for package-level
+  generators and panics on invalid input.
+- `MustCompileOptions(pattern string, opts Options) *Generator` combines
+  package-level setup with caller-provided options.
+- `FromRegexp(re *syntax.Regexp, opts Options) (*Generator, error)` compiles an
+  existing `regexp/syntax.Regexp` without mutating it.
 - `(*Generator).String() string` returns a generated string using the default
   pseudo-random source.
 - `(*Generator).StringWithRand(r Rand) string` uses a caller-provided random
@@ -50,18 +54,21 @@ The public API is intentionally small:
 - `(*Generator).Append(dst []byte) []byte` appends generated output to a buffer.
 - `(*Generator).AppendWithRand(dst []byte, r Rand) []byte` combines buffer reuse
   with a caller-provided random source.
+- `Options` controls compile-time generation policy, including unbounded
+  repetition limits.
 - `CryptoRand` is a `Rand` value backed by Go's `crypto/rand` source.
 
-`DefaultMaxRepeat` is the recommended bound for unbounded repetitions:
+`DefaultMaxRepeat` is the bound used by `Compile` and `MustCompile` for
+unbounded repetitions:
 
 ```go
 const DefaultMaxRepeat = 32
 ```
 
-The main API keeps this policy explicit:
+Use options when a pattern needs a different unbounded-repeat policy:
 
 ```go
-g, err := randregex.Compile(pattern, randregex.DefaultMaxRepeat)
+g, err := randregex.CompileOptions(pattern, randregex.Options{MaxRepeat: 8})
 ```
 
 ## Compile Once, Reuse Often
@@ -69,7 +76,7 @@ g, err := randregex.Compile(pattern, randregex.DefaultMaxRepeat)
 Compile patterns once and reuse the generator:
 
 ```go
-var userID = randregex.MustCompile(`user-[a-z0-9]{12}`, randregex.DefaultMaxRepeat)
+var userID = randregex.MustCompile(`user-[a-z0-9]{12}`)
 
 func newUserID() string {
 	return userID.String()
@@ -92,7 +99,7 @@ This interface is satisfied by `*math/rand/v2.Rand`:
 
 ```go
 r := rand.New(rand.NewPCG(1, 2))
-g := randregex.MustCompile(`[a-z]{8}`, randregex.DefaultMaxRepeat)
+g := randregex.MustCompile(`[a-z]{8}`)
 
 fmt.Println(g.StringWithRand(r))
 ```
@@ -106,7 +113,7 @@ For security-sensitive output, pass `CryptoRand` to `StringWithRand` or
 `AppendWithRand`:
 
 ```go
-g := randregex.MustCompile(`[a-zA-Z0-9_-]{32}`, randregex.DefaultMaxRepeat)
+g := randregex.MustCompile(`[a-zA-Z0-9_-]{32}`)
 
 token := g.StringWithRand(randregex.CryptoRand)
 ```
@@ -119,7 +126,7 @@ source fails.
 `Append` and `AppendWithRand` are the allocation-conscious APIs:
 
 ```go
-g := randregex.MustCompile(`[a-zA-Z0-9_-]{24}`, randregex.DefaultMaxRepeat)
+g := randregex.MustCompile(`[a-zA-Z0-9_-]{24}`)
 buf := make([]byte, 0, 64)
 
 for range 1000 {
@@ -159,16 +166,18 @@ while `a?\b` is rejected because one random branch would violate the assertion.
 
 ## Repetition Bounds
 
-`maxRepeat` controls unbounded repetitions:
+`Options.MaxRepeat` controls unbounded repetitions:
 
-- `a*` generates 0 through `maxRepeat` repetitions.
-- `a+` generates 1 through `maxRepeat` repetitions, or exactly 1 when
-  `maxRepeat` is 0.
-- `a{3,}` generates 3 through `maxRepeat` repetitions when `maxRepeat > 3`.
-- If the minimum is greater than or equal to `maxRepeat`, an unbounded repeat
+- `a*` generates 0 through `MaxRepeat` repetitions.
+- `a+` generates 1 through `MaxRepeat` repetitions, or exactly 1 when
+  `MaxRepeat` is 0.
+- `a{3,}` generates 3 through `MaxRepeat` repetitions when `MaxRepeat > 3`.
+- If the minimum is greater than or equal to `MaxRepeat`, an unbounded repeat
   generates exactly the minimum.
 
-`maxRepeat` must be greater than or equal to zero.
+`MaxRepeat` must be greater than or equal to zero. `Compile` and `MustCompile`
+use `DefaultMaxRepeat`. Passing `Options{MaxRepeat: 0}` to `CompileOptions`,
+`MustCompileOptions`, or `FromRegexp` explicitly chooses a zero upper bound.
 
 ## Character Generation
 

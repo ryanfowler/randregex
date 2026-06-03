@@ -54,7 +54,15 @@ func TestGeneratedSamplesMatch(t *testing.T) {
 			if tt.repeat != 0 || tt.name == "max repeat zero star" || tt.name == "max repeat zero plus" {
 				maxRepeat = tt.repeat
 			}
-			g, err := Compile(tt.pat, maxRepeat)
+			var (
+				g   *Generator
+				err error
+			)
+			if maxRepeat == DefaultMaxRepeat {
+				g, err = Compile(tt.pat)
+			} else {
+				g, err = CompileOptions(tt.pat, Options{MaxRepeat: maxRepeat})
+			}
 			if err != nil {
 				t.Fatalf("Compile(%q): %v", tt.pat, err)
 			}
@@ -71,7 +79,7 @@ func TestGeneratedSamplesMatch(t *testing.T) {
 }
 
 func TestAppendAppendsToExistingBuffer(t *testing.T) {
-	g := MustCompile(`[a-z]{8}`, DefaultMaxRepeat)
+	g := MustCompile(`[a-z]{8}`)
 	r := rand.New(rand.NewPCG(1, 2))
 	dst := []byte("prefix:")
 	got := g.AppendWithRand(dst, r)
@@ -84,26 +92,26 @@ func TestAppendAppendsToExistingBuffer(t *testing.T) {
 }
 
 func TestInvalidRegexPattern(t *testing.T) {
-	if _, err := Compile(`[`, DefaultMaxRepeat); err == nil {
+	if _, err := Compile(`[`); err == nil {
 		t.Fatal("Compile returned nil error for invalid pattern")
 	}
 }
 
 func TestNegativeMaxRepeat(t *testing.T) {
-	if _, err := Compile(`a`, -1); err == nil {
+	if _, err := CompileOptions(`a`, Options{MaxRepeat: -1}); err == nil {
 		t.Fatal("Compile returned nil error for negative maxRepeat")
 	}
 }
 
 func TestUnsupportedNoMatch(t *testing.T) {
-	_, err := FromRegexp(&syntax.Regexp{Op: syntax.OpNoMatch}, DefaultMaxRepeat)
+	_, err := FromRegexp(&syntax.Regexp{Op: syntax.OpNoMatch}, Options{MaxRepeat: DefaultMaxRepeat})
 	if err == nil {
 		t.Fatal("FromRegexp returned nil error for OpNoMatch")
 	}
 }
 
 func TestUnsupportedUnsampleableClass(t *testing.T) {
-	_, err := Compile(`[^\s\S]`, DefaultMaxRepeat)
+	_, err := Compile(`[^\s\S]`)
 	if err == nil {
 		t.Fatal("Compile returned nil error for unsampleable class")
 	}
@@ -120,7 +128,7 @@ func TestWordBoundaryMustBeGuaranteed(t *testing.T) {
 
 	for _, pat := range tests {
 		t.Run(pat, func(t *testing.T) {
-			if _, err := Compile(pat, DefaultMaxRepeat); err == nil {
+			if _, err := Compile(pat); err == nil {
 				t.Fatal("Compile returned nil error for non-guaranteed word boundary")
 			}
 		})
@@ -128,7 +136,7 @@ func TestWordBoundaryMustBeGuaranteed(t *testing.T) {
 }
 
 func TestRootNoWordBoundary(t *testing.T) {
-	g := MustCompile(`\B`, DefaultMaxRepeat)
+	g := MustCompile(`\B`)
 	got := g.String()
 	if got != "" {
 		t.Fatalf(`\B generated %q, want empty string`, got)
@@ -152,7 +160,7 @@ func TestMaxRepeatSemantics(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.pat, func(t *testing.T) {
-			g := MustCompile(tt.pat, tt.maxRepeat)
+			g := MustCompileOptions(tt.pat, Options{MaxRepeat: tt.maxRepeat})
 			got := g.StringWithRand(rand.New(rand.NewPCG(1, 2)))
 			if len(got) != tt.wantLen {
 				t.Fatalf("len(%q) = %d, want %d", got, len(got), tt.wantLen)
@@ -167,7 +175,7 @@ func TestFromRegexpDoesNotMutate(t *testing.T) {
 		t.Fatal(err)
 	}
 	before := re.String()
-	if _, err := FromRegexp(re, DefaultMaxRepeat); err != nil {
+	if _, err := FromRegexp(re, Options{MaxRepeat: DefaultMaxRepeat}); err != nil {
 		t.Fatal(err)
 	}
 	if after := re.String(); after != before {
@@ -176,7 +184,7 @@ func TestFromRegexpDoesNotMutate(t *testing.T) {
 }
 
 func TestDeterministicOutputWithSeededRand(t *testing.T) {
-	g := MustCompile(`[a-z]{8}\d{2}`, DefaultMaxRepeat)
+	g := MustCompile(`[a-z]{8}\d{2}`)
 	r1 := rand.New(rand.NewPCG(1, 2))
 	r2 := rand.New(rand.NewPCG(1, 2))
 
@@ -191,7 +199,7 @@ func TestDeterministicOutputWithSeededRand(t *testing.T) {
 
 func TestCryptoRandGeneratesMatchingSamples(t *testing.T) {
 	var r Rand = CryptoRand
-	g := MustCompile(`[a-zA-Z0-9_-]{32}`, DefaultMaxRepeat)
+	g := MustCompile(`[a-zA-Z0-9_-]{32}`)
 	re := regexp.MustCompile(`^(?:[a-zA-Z0-9_-]{32})$`)
 
 	for i := 0; i < 100; i++ {
@@ -230,7 +238,7 @@ func TestCryptoRandPanicsForNonPositiveN(t *testing.T) {
 }
 
 func TestConcurrentUse(t *testing.T) {
-	g := MustCompile(`(foo|bar|baz)-[0-9]{4}`, DefaultMaxRepeat)
+	g := MustCompile(`(foo|bar|baz)-[0-9]{4}`)
 	re := regexp.MustCompile(`^(?:(foo|bar|baz)-[0-9]{4})$`)
 
 	var wg sync.WaitGroup
@@ -252,7 +260,7 @@ func TestConcurrentUse(t *testing.T) {
 }
 
 func TestConcurrentDefaultRandUse(t *testing.T) {
-	g := MustCompile(`[a-z0-9]{32}`, DefaultMaxRepeat)
+	g := MustCompile(`[a-z0-9]{32}`)
 	re := regexp.MustCompile(`^(?:[a-z0-9]{32})$`)
 
 	var wg sync.WaitGroup
@@ -273,7 +281,7 @@ func TestConcurrentDefaultRandUse(t *testing.T) {
 }
 
 func TestConcurrentCryptoRandUse(t *testing.T) {
-	g := MustCompile(`[a-z0-9]{32}`, DefaultMaxRepeat)
+	g := MustCompile(`[a-z0-9]{32}`)
 	re := regexp.MustCompile(`^(?:[a-z0-9]{32})$`)
 
 	var wg sync.WaitGroup
@@ -299,5 +307,5 @@ func TestMustCompilePanics(t *testing.T) {
 			t.Fatal("MustCompile did not panic")
 		}
 	}()
-	_ = MustCompile(`[`, DefaultMaxRepeat)
+	_ = MustCompile(`[`)
 }
