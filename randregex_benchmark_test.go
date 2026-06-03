@@ -2,8 +2,11 @@ package randregex
 
 import (
 	"math/rand/v2"
+	"strconv"
 	"testing"
 )
+
+var benchInt int
 
 var benchPatterns = []string{
 	`[a-z]{16}`,
@@ -75,6 +78,33 @@ func BenchmarkGeneratorAppend(b *testing.B) {
 			for b.Loop() {
 				buf = buf[:0]
 				buf = g.Append(buf)
+			}
+			_ = buf
+		})
+	}
+}
+
+func BenchmarkCryptoRandIntN(b *testing.B) {
+	for _, n := range []int{2, 10, 64, 95, 256, 257, 1000, 1 << 20} {
+		b.Run("n="+strconv.Itoa(n), func(b *testing.B) {
+			var x int
+			for b.Loop() {
+				x ^= CryptoRand.IntN(n)
+			}
+			benchInt = x
+		})
+	}
+}
+
+func BenchmarkGeneratorAppendWithCryptoRand(b *testing.B) {
+	for _, pattern := range benchPatterns {
+		b.Run(pattern, func(b *testing.B) {
+			g := MustCompile(pattern, DefaultMaxRepeat)
+			buf := make([]byte, 0, 256)
+			b.ResetTimer()
+			for b.Loop() {
+				buf = buf[:0]
+				buf = g.AppendWithRand(buf, CryptoRand)
 			}
 			_ = buf
 		})

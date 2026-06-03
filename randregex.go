@@ -15,9 +15,10 @@ const DefaultMaxRepeat = 32
 
 // Rand is the random-number interface used by Generator.
 //
-// It is satisfied by *math/rand/v2.Rand. Implementations must return a value in
-// [0, n), and may panic when n <= 0. If a Rand is shared concurrently, the Rand
-// implementation is responsible for synchronization.
+// It is satisfied by *math/rand/v2.Rand. The package-level CryptoRand value
+// provides a cryptographic implementation. Implementations must return a value
+// in [0, n), and may panic when n <= 0. If a Rand is shared concurrently, the
+// Rand implementation is responsible for synchronization.
 type Rand interface {
 	IntN(n int) int
 }

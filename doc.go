@@ -16,7 +16,8 @@
 // generators when invalid patterns should be treated as programmer errors.
 //
 // Generated strings are not cryptographic secrets unless callers provide a Rand
-// implementation backed by an appropriate cryptographic source.
+// implementation backed by an appropriate cryptographic source, such as
+// CryptoRand.
 //
 // Character generation is ASCII-first. Literal Unicode characters are emitted
 // as literals, but dot and negated or very broad character classes sample from
