@@ -9,9 +9,21 @@ import (
 
 // DefaultMaxRepeat is the recommended upper bound for unbounded repetitions.
 //
-// It is used for patterns such as a*, a+, and a{3,}. The primary APIs remain
-// explicit, so callers pass this value as Compile(pattern, DefaultMaxRepeat).
+// It is used by Compile and MustCompile for patterns such as a*, a+, and
+// a{3,}. Pass Options to CompileOptions, MustCompileOptions, or FromRegexp to
+// choose a different bound.
 const DefaultMaxRepeat = 32
+
+// Options controls compilation policy for a Generator.
+//
+// The zero value is valid and means MaxRepeat is 0. Use Compile or MustCompile
+// for the package defaults.
+type Options struct {
+	// MaxRepeat controls the maximum used for unbounded repetitions. It must be
+	// non-negative. For a{n,}, the upper bound is MaxRepeat when MaxRepeat > n;
+	// otherwise generation emits exactly n repetitions.
+	MaxRepeat int
+}
 
 // Rand is the random-number interface used by Generator.
 //
@@ -32,38 +44,39 @@ type Generator struct {
 }
 
 // Compile parses pattern using regexp/syntax.Perl and compiles it into a
-// Generator.
-//
-// maxRepeat controls the maximum used for unbounded repetitions. It must be
-// non-negative. For a{n,}, the upper bound is maxRepeat when maxRepeat > n;
-// otherwise generation emits exactly n repetitions.
-func Compile(pattern string, maxRepeat int) (*Generator, error) {
+// Generator using DefaultMaxRepeat.
+func Compile(pattern string) (*Generator, error) {
+	return CompileOptions(pattern, Options{MaxRepeat: DefaultMaxRepeat})
+}
+
+// CompileOptions parses pattern using regexp/syntax.Perl and compiles it into
+// a Generator using opts.
+func CompileOptions(pattern string, opts Options) (*Generator, error) {
 	re, err := syntax.Parse(pattern, syntax.Perl)
 	if err != nil {
 		return nil, err
 	}
-	return FromRegexp(re, maxRepeat)
+	return FromRegexp(re, opts)
 }
 
 // FromRegexp compiles re into a Generator without mutating re.
 //
-// maxRepeat must be non-negative and controls unbounded repetitions as
-// described by Compile. Passing an already simplified regexp is supported, but
-// regexp/syntax.Simplify may rewrite counted unbounded repetitions such as
-// a{3,} into forms that no longer preserve the original minimum for randregex's
-// maxRepeat policy.
-func FromRegexp(re *syntax.Regexp, maxRepeat int) (*Generator, error) {
+// opts controls unbounded repetitions as described by Options. Passing an
+// already simplified regexp is supported, but regexp/syntax.Simplify may
+// rewrite counted unbounded repetitions such as a{3,} into forms that no longer
+// preserve the original minimum for randregex's MaxRepeat policy.
+func FromRegexp(re *syntax.Regexp, opts Options) (*Generator, error) {
 	if re == nil {
 		return nil, fmt.Errorf("randregex: regexp must not be nil")
 	}
-	if maxRepeat < 0 {
-		return nil, fmt.Errorf("randregex: maxRepeat must be >= 0")
+	if opts.MaxRepeat < 0 {
+		return nil, fmt.Errorf("randregex: Options.MaxRepeat must be >= 0")
 	}
 	if _, err := validateRootZeroWidth(re); err != nil {
 		return nil, err
 	}
 
-	root, err := compileNode(re, maxRepeat)
+	root, err := compileNode(re, opts.MaxRepeat)
 	if err != nil {
 		return nil, err
 	}
@@ -71,8 +84,14 @@ func FromRegexp(re *syntax.Regexp, maxRepeat int) (*Generator, error) {
 }
 
 // MustCompile is like Compile but panics if pattern cannot be compiled.
-func MustCompile(pattern string, maxRepeat int) *Generator {
-	g, err := Compile(pattern, maxRepeat)
+func MustCompile(pattern string) *Generator {
+	return MustCompileOptions(pattern, Options{MaxRepeat: DefaultMaxRepeat})
+}
+
+// MustCompileOptions is like CompileOptions but panics if pattern cannot be
+// compiled.
+func MustCompileOptions(pattern string, opts Options) *Generator {
+	g, err := CompileOptions(pattern, opts)
 	if err != nil {
 		panic(err)
 	}

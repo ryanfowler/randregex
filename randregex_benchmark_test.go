@@ -20,7 +20,7 @@ func BenchmarkCompile(b *testing.B) {
 	for _, pattern := range benchPatterns {
 		b.Run(pattern, func(b *testing.B) {
 			for b.Loop() {
-				g, err := Compile(pattern, DefaultMaxRepeat)
+				g, err := Compile(pattern)
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -34,7 +34,7 @@ func BenchmarkCompileString(b *testing.B) {
 	for _, pattern := range benchPatterns {
 		b.Run(pattern, func(b *testing.B) {
 			for b.Loop() {
-				g, err := Compile(pattern, DefaultMaxRepeat)
+				g, err := Compile(pattern)
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -47,7 +47,7 @@ func BenchmarkCompileString(b *testing.B) {
 func BenchmarkGeneratorString(b *testing.B) {
 	for _, pattern := range benchPatterns {
 		b.Run(pattern, func(b *testing.B) {
-			g := MustCompile(pattern, DefaultMaxRepeat)
+			g := MustCompile(pattern)
 			b.ResetTimer()
 			for b.Loop() {
 				_ = g.String()
@@ -59,7 +59,7 @@ func BenchmarkGeneratorString(b *testing.B) {
 func BenchmarkGeneratorStringWithRand(b *testing.B) {
 	for _, pattern := range benchPatterns {
 		b.Run(pattern, func(b *testing.B) {
-			g := MustCompile(pattern, DefaultMaxRepeat)
+			g := MustCompile(pattern)
 			r := rand.New(rand.NewPCG(1, 2))
 			b.ResetTimer()
 			for b.Loop() {
@@ -72,7 +72,7 @@ func BenchmarkGeneratorStringWithRand(b *testing.B) {
 func BenchmarkGeneratorAppend(b *testing.B) {
 	for _, pattern := range benchPatterns {
 		b.Run(pattern, func(b *testing.B) {
-			g := MustCompile(pattern, DefaultMaxRepeat)
+			g := MustCompile(pattern)
 			buf := make([]byte, 0, 256)
 			b.ResetTimer()
 			for b.Loop() {
@@ -99,7 +99,7 @@ func BenchmarkCryptoRandIntN(b *testing.B) {
 func BenchmarkGeneratorAppendWithCryptoRand(b *testing.B) {
 	for _, pattern := range benchPatterns {
 		b.Run(pattern, func(b *testing.B) {
-			g := MustCompile(pattern, DefaultMaxRepeat)
+			g := MustCompile(pattern)
 			buf := make([]byte, 0, 256)
 			b.ResetTimer()
 			for b.Loop() {
@@ -114,7 +114,7 @@ func BenchmarkGeneratorAppendWithCryptoRand(b *testing.B) {
 func BenchmarkGeneratorAppendWithRand(b *testing.B) {
 	for _, pattern := range benchPatterns {
 		b.Run(pattern, func(b *testing.B) {
-			g := MustCompile(pattern, DefaultMaxRepeat)
+			g := MustCompile(pattern)
 			r := rand.New(rand.NewPCG(1, 2))
 			buf := make([]byte, 0, 256)
 			b.ResetTimer()

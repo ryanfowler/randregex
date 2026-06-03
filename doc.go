@@ -11,9 +11,11 @@
 // seeded *math/rand/v2.Rand for reproducible output. If a Rand is shared across
 // goroutines, the Rand implementation must provide its own synchronization.
 //
-// Compile and FromRegexp parse, validate, and convert patterns into an
-// immutable internal representation. Use MustCompile for package-level
-// generators when invalid patterns should be treated as programmer errors.
+// Compile parses, validates, and converts patterns into an immutable internal
+// representation using DefaultMaxRepeat. Use CompileOptions or FromRegexp with
+// Options when a different unbounded-repeat policy is needed. Use MustCompile
+// for package-level generators when invalid patterns should be treated as
+// programmer errors.
 //
 // Generated strings are not cryptographic secrets unless callers provide a Rand
 // implementation backed by an appropriate cryptographic source, such as
