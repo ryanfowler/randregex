@@ -5,31 +5,6 @@ regular expressions. It is intended for test data, identifiers, fixtures,
 property-style checks, and other workflows where a compact regexp is a clearer
 way to describe valid sample strings than handwritten generation code.
 
-## Evaluation Summary
-
-Use `randregex` when you need:
-
-- A small Go package for producing strings that match Go regexp syntax.
-- A compile-once generator that can be reused safely across goroutines.
-- Deterministic output by supplying your own seeded `math/rand/v2.Rand`.
-- Low-allocation generation through caller-provided byte buffers.
-- Clear compile-time failures for unsupported or unsafe regexp constructs.
-
-Consider another approach when you need:
-
-- Cryptographically secure output from the default generator methods.
-- Uniform sampling across every possible string in a regexp language.
-- Full Unicode sampling for character classes.
-- Regex features not supported by Go's regexp engine, such as lookaround or
-  backreferences.
-
-## Requirements
-
-- Go module: `github.com/ryanfowler/randregex`
-- Go version: the module declares `go 1.25`
-- Runtime dependencies: none beyond the Go standard library
-- Regex parser: Go's `regexp/syntax` package with `syntax.Perl`
-
 ## Install
 
 ```sh
@@ -75,6 +50,7 @@ The public API is intentionally small:
 - `(*Generator).Append(dst []byte) []byte` appends generated output to a buffer.
 - `(*Generator).AppendWithRand(dst []byte, r Rand) []byte` combines buffer reuse
   with a caller-provided random source.
+- `CryptoRand` is a `Rand` value backed by Go's `crypto/rand` source.
 
 `DefaultMaxRepeat` is the recommended bound for unbounded repetitions:
 
@@ -123,6 +99,20 @@ fmt.Println(g.StringWithRand(r))
 
 If a `Rand` value is shared across goroutines, the `Rand` implementation must
 provide its own synchronization.
+
+## Cryptographic Randomness
+
+For security-sensitive output, pass `CryptoRand` to `StringWithRand` or
+`AppendWithRand`:
+
+```go
+g := randregex.MustCompile(`[a-zA-Z0-9_-]{32}`, randregex.DefaultMaxRepeat)
+
+token := g.StringWithRand(randregex.CryptoRand)
+```
+
+`CryptoRand` uses `crypto/rand.Reader` and panics if the system cryptographic
+source fails.
 
 ## Buffer Reuse
 
@@ -204,8 +194,7 @@ The default methods use Go's pseudo-random `math/rand/v2` default source.
 Generated strings are not cryptographic secrets.
 
 For reproducible output, pass a seeded `math/rand/v2.Rand`. For
-security-sensitive use, provide a `Rand` implementation backed by an
-appropriate cryptographic source.
+security-sensitive use, pass `randregex.CryptoRand`.
 
 `randregex` samples choices locally at each regexp node. It does not attempt to
 provide a uniform distribution over all strings accepted by a pattern.

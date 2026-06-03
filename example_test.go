@@ -25,6 +25,13 @@ func ExampleGenerator_StringWithRand() {
 	// Output: uquugbml
 }
 
+func ExampleCryptoRand() {
+	g := randregex.MustCompile(`[A-F0-9]{16}`, randregex.DefaultMaxRepeat)
+
+	fmt.Println(len(g.StringWithRand(randregex.CryptoRand)))
+	// Output: 16
+}
+
 func ExampleGenerator_Append() {
 	g := randregex.MustCompile(`[a-zA-Z0-9_-]{24}`, randregex.DefaultMaxRepeat)
 	buf := make([]byte, 0, 64)

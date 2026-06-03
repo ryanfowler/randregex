@@ -4,6 +4,7 @@ import (
 	"math/rand/v2"
 	"regexp"
 	"regexp/syntax"
+	"strconv"
 	"sync"
 	"testing"
 )
@@ -188,6 +189,46 @@ func TestDeterministicOutputWithSeededRand(t *testing.T) {
 	}
 }
 
+func TestCryptoRandGeneratesMatchingSamples(t *testing.T) {
+	var r Rand = CryptoRand
+	g := MustCompile(`[a-zA-Z0-9_-]{32}`, DefaultMaxRepeat)
+	re := regexp.MustCompile(`^(?:[a-zA-Z0-9_-]{32})$`)
+
+	for i := 0; i < 100; i++ {
+		s := g.StringWithRand(r)
+		if !re.MatchString(s) {
+			t.Fatalf("generated invalid sample: %q", s)
+		}
+	}
+}
+
+func TestCryptoRandIntNRange(t *testing.T) {
+	tests := []int{1, 2, 10, 95, 256, 257, 1000, 1 << 20}
+	if strconv.IntSize == 64 {
+		tests = append(tests, 1<<40)
+	}
+
+	for _, n := range tests {
+		t.Run(strconv.Itoa(n), func(t *testing.T) {
+			for range 100 {
+				got := CryptoRand.IntN(n)
+				if got < 0 || got >= n {
+					t.Fatalf("CryptoRand.IntN(%d) = %d, want [0, %d)", n, got, n)
+				}
+			}
+		})
+	}
+}
+
+func TestCryptoRandPanicsForNonPositiveN(t *testing.T) {
+	defer func() {
+		if recover() == nil {
+			t.Fatal("CryptoRand.IntN did not panic")
+		}
+	}()
+	CryptoRand.IntN(0)
+}
+
 func TestConcurrentUse(t *testing.T) {
 	g := MustCompile(`(foo|bar|baz)-[0-9]{4}`, DefaultMaxRepeat)
 	re := regexp.MustCompile(`^(?:(foo|bar|baz)-[0-9]{4})$`)
@@ -221,6 +262,27 @@ func TestConcurrentDefaultRandUse(t *testing.T) {
 			defer wg.Done()
 			for i := 0; i < 1000; i++ {
 				s := g.String()
+				if !re.MatchString(s) {
+					t.Errorf("generated invalid sample: %q", s)
+					return
+				}
+			}
+		}()
+	}
+	wg.Wait()
+}
+
+func TestConcurrentCryptoRandUse(t *testing.T) {
+	g := MustCompile(`[a-z0-9]{32}`, DefaultMaxRepeat)
+	re := regexp.MustCompile(`^(?:[a-z0-9]{32})$`)
+
+	var wg sync.WaitGroup
+	for range 16 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for i := 0; i < 1000; i++ {
+				s := g.StringWithRand(CryptoRand)
 				if !re.MatchString(s) {
 					t.Errorf("generated invalid sample: %q", s)
 					return
