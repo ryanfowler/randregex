@@ -52,12 +52,13 @@ func CompileMaxRepeat(pattern string, maxRepeat int) (*Generator, error) {
 }
 
 // FromRegexp compiles re into a Generator without mutating re, using
-// DefaultMaxRepeat.
+// DefaultMaxRepeat. It returns an error when re is nil.
 func FromRegexp(re *syntax.Regexp) (*Generator, error) {
 	return FromRegexpMaxRepeat(re, DefaultMaxRepeat)
 }
 
-// FromRegexpMaxRepeat compiles re into a Generator without mutating re.
+// FromRegexpMaxRepeat compiles re into a Generator without mutating re. It
+// returns an error when re is nil.
 //
 // maxRepeat controls unbounded repetitions as described by CompileMaxRepeat.
 // Passing an already simplified regexp is supported, but regexp/syntax.Simplify
@@ -109,7 +110,8 @@ func (g *Generator) Append(dst []byte) []byte {
 
 // GenerateWithRand generates a string matching the compiled regexp using r.
 //
-// If r is shared concurrently, it must provide its own synchronization.
+// r must be non-nil and must return values in [0, n) from IntN(n). If r is
+// shared concurrently, it must provide its own synchronization.
 func (g *Generator) GenerateWithRand(r Rand) string {
 	return string(g.AppendWithRand(nil, r))
 }
@@ -118,8 +120,9 @@ func (g *Generator) GenerateWithRand(r Rand) string {
 // using r, and returns the extended buffer.
 //
 // This is the lowest-allocation public API. If dst has sufficient capacity, it
-// does not allocate for common ASCII patterns. If r is shared concurrently, it
-// must provide its own synchronization.
+// does not allocate for common ASCII patterns. r must be non-nil and must
+// return values in [0, n) from IntN(n). If r is shared concurrently, it must
+// provide its own synchronization.
 func (g *Generator) AppendWithRand(dst []byte, r Rand) []byte {
 	return g.root.append(dst, r)
 }

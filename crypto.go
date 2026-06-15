@@ -9,10 +9,10 @@ import (
 
 // CryptoRand is a Rand value backed by crypto/rand.Reader.
 //
-// Pass it to StringWithRand or AppendWithRand when generated strings are used
-// as secrets or other security-sensitive identifiers. CryptoRand is safe for
-// concurrent use. It panics if crypto/rand.Reader fails or if IntN is called
-// with n <= 0.
+// Pass it to GenerateWithRand or AppendWithRand when generated strings are
+// used as secrets or other security-sensitive identifiers. CryptoRand is safe
+// for concurrent use. It panics if crypto/rand.Reader fails or if IntN is
+// called with n <= 0.
 var CryptoRand = &cryptoRand{}
 
 const cryptoRandBufferSize = 4096

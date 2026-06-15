@@ -73,6 +73,12 @@ policy:
 g, err := randregex.CompileMaxRepeat(pattern, 8)
 ```
 
+`FromRegexp` and `FromRegexpMaxRepeat` return an error for a nil
+`*syntax.Regexp`. They do not mutate the regexp passed by the caller. Passing an
+already simplified regexp is supported, but `regexp/syntax.Simplify` may rewrite
+counted unbounded repetitions such as `a{3,}` into forms that no longer preserve
+the original minimum for randregex's `maxRepeat` policy.
+
 ## Compile Once, Reuse Often
 
 Compile patterns once and reuse the generator:
@@ -109,6 +115,10 @@ fmt.Println(g.GenerateWithRand(r))
 If a `Rand` value is shared across goroutines, the `Rand` implementation must
 provide its own synchronization.
 
+`GenerateWithRand` and `AppendWithRand` require a non-nil `Rand` that returns a
+value in `[0, n)` from `IntN(n)`. Invalid `Rand` implementations may cause a
+panic or invalid output.
+
 ## Cryptographic Randomness
 
 For security-sensitive output, pass `CryptoRand` to `GenerateWithRand` or
@@ -121,7 +131,7 @@ token := g.GenerateWithRand(randregex.CryptoRand)
 ```
 
 `CryptoRand` uses `crypto/rand.Reader` and panics if the system cryptographic
-source fails.
+source fails. Direct calls to `CryptoRand.IntN` also panic when `n <= 0`.
 
 The regular expression still determines the output entropy. `CryptoRand`
 provides an unpredictable source of randomness, but it does not make a small
