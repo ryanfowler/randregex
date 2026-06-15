@@ -39,14 +39,17 @@ The public API is intentionally small:
 
 - `Compile(pattern string) (*Generator, error)` parses and validates a regexp
   pattern using `DefaultMaxRepeat`.
-- `CompileOptions(pattern string, opts Options) (*Generator, error)` parses and
-  validates a regexp pattern using caller-provided options.
+- `CompileMaxRepeat(pattern string, maxRepeat int) (*Generator, error)` parses
+  and validates a regexp pattern using a caller-provided unbounded-repeat limit.
 - `MustCompile(pattern string) *Generator` is suitable for package-level
   generators and panics on invalid input.
-- `MustCompileOptions(pattern string, opts Options) *Generator` combines
-  package-level setup with caller-provided options.
-- `FromRegexp(re *syntax.Regexp, opts Options) (*Generator, error)` compiles an
-  existing `regexp/syntax.Regexp` without mutating it.
+- `MustCompileMaxRepeat(pattern string, maxRepeat int) *Generator` combines
+  package-level setup with a caller-provided unbounded-repeat limit.
+- `FromRegexp(re *syntax.Regexp) (*Generator, error)` compiles an existing
+  `regexp/syntax.Regexp` without mutating it, using `DefaultMaxRepeat`.
+- `FromRegexpMaxRepeat(re *syntax.Regexp, maxRepeat int) (*Generator, error)`
+  compiles an existing `regexp/syntax.Regexp` with a caller-provided
+  unbounded-repeat limit.
 - `(*Generator).String() string` returns a generated string using the default
   pseudo-random source.
 - `(*Generator).StringWithRand(r Rand) string` uses a caller-provided random
@@ -54,21 +57,20 @@ The public API is intentionally small:
 - `(*Generator).Append(dst []byte) []byte` appends generated output to a buffer.
 - `(*Generator).AppendWithRand(dst []byte, r Rand) []byte` combines buffer reuse
   with a caller-provided random source.
-- `Options` controls compile-time generation policy, including unbounded
-  repetition limits.
 - `CryptoRand` is a `Rand` value backed by Go's `crypto/rand` source.
 
-`DefaultMaxRepeat` is the bound used by `Compile` and `MustCompile` for
-unbounded repetitions:
+`DefaultMaxRepeat` is the bound used by `Compile`, `MustCompile`, and
+`FromRegexp` for unbounded repetitions:
 
 ```go
 const DefaultMaxRepeat = 32
 ```
 
-Use options when a pattern needs a different unbounded-repeat policy:
+Use a `MaxRepeat` variant when a pattern needs a different unbounded-repeat
+policy:
 
 ```go
-g, err := randregex.CompileOptions(pattern, randregex.Options{MaxRepeat: 8})
+g, err := randregex.CompileMaxRepeat(pattern, 8)
 ```
 
 ## Compile Once, Reuse Often
@@ -166,18 +168,18 @@ while `a?\b` is rejected because one random branch would violate the assertion.
 
 ## Repetition Bounds
 
-`Options.MaxRepeat` controls unbounded repetitions:
+The `maxRepeat` argument controls unbounded repetitions:
 
-- `a*` generates 0 through `MaxRepeat` repetitions.
-- `a+` generates 1 through `MaxRepeat` repetitions, or exactly 1 when
-  `MaxRepeat` is 0.
-- `a{3,}` generates 3 through `MaxRepeat` repetitions when `MaxRepeat > 3`.
-- If the minimum is greater than or equal to `MaxRepeat`, an unbounded repeat
+- `a*` generates 0 through `maxRepeat` repetitions.
+- `a+` generates 1 through `maxRepeat` repetitions, or exactly 1 when
+  `maxRepeat` is 0.
+- `a{3,}` generates 3 through `maxRepeat` repetitions when `maxRepeat > 3`.
+- If the minimum is greater than or equal to `maxRepeat`, an unbounded repeat
   generates exactly the minimum.
 
-`MaxRepeat` must be greater than or equal to zero. `Compile` and `MustCompile`
-use `DefaultMaxRepeat`. Passing `Options{MaxRepeat: 0}` to `CompileOptions`,
-`MustCompileOptions`, or `FromRegexp` explicitly chooses a zero upper bound.
+`maxRepeat` must be greater than or equal to zero. `Compile`, `MustCompile`, and
+`FromRegexp` use `DefaultMaxRepeat`. Passing `0` to a `MaxRepeat` variant
+explicitly chooses a zero upper bound.
 
 ## Character Generation
 

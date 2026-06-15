@@ -17,8 +17,8 @@ func ExampleCompile() {
 	// Output: 10
 }
 
-func ExampleCompileOptions() {
-	g, err := randregex.CompileOptions(`a{4,}`, randregex.Options{MaxRepeat: 4})
+func ExampleCompileMaxRepeat() {
+	g, err := randregex.CompileMaxRepeat(`a{4,}`, 4)
 	if err != nil {
 		panic(err)
 	}
