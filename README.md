@@ -1,5 +1,7 @@
 # randregex
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/ryanfowler/randregex.svg)](https://pkg.go.dev/github.com/ryanfowler/randregex)
+
 `randregex` is a Go library for generating pseudo-random strings that match
 regular expressions. It is intended for test data, identifiers, fixtures,
 property-style checks, and other workflows where a compact regexp is a clearer
