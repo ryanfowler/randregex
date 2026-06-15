@@ -29,7 +29,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Println(g.String())
+	fmt.Println(g.Generate())
 }
 ```
 
@@ -50,9 +50,9 @@ The public API is intentionally small:
 - `FromRegexpMaxRepeat(re *syntax.Regexp, maxRepeat int) (*Generator, error)`
   compiles an existing `regexp/syntax.Regexp` with a caller-provided
   unbounded-repeat limit.
-- `(*Generator).String() string` returns a generated string using the default
+- `(*Generator).Generate() string` returns a generated string using the default
   pseudo-random source.
-- `(*Generator).StringWithRand(r Rand) string` uses a caller-provided random
+- `(*Generator).GenerateWithRand(r Rand) string` uses a caller-provided random
   source.
 - `(*Generator).Append(dst []byte) []byte` appends generated output to a buffer.
 - `(*Generator).AppendWithRand(dst []byte, r Rand) []byte` combines buffer reuse
@@ -81,7 +81,7 @@ Compile patterns once and reuse the generator:
 var userID = randregex.MustCompile(`user-[a-z0-9]{12}`)
 
 func newUserID() string {
-	return userID.String()
+	return userID.Generate()
 }
 ```
 
@@ -89,7 +89,7 @@ func newUserID() string {
 
 ## Reproducible Output
 
-Use `StringWithRand` or `AppendWithRand` with any value that satisfies:
+Use `GenerateWithRand` or `AppendWithRand` with any value that satisfies:
 
 ```go
 type Rand interface {
@@ -103,7 +103,7 @@ This interface is satisfied by `*math/rand/v2.Rand`:
 r := rand.New(rand.NewPCG(1, 2))
 g := randregex.MustCompile(`[a-z]{8}`)
 
-fmt.Println(g.StringWithRand(r))
+fmt.Println(g.GenerateWithRand(r))
 ```
 
 If a `Rand` value is shared across goroutines, the `Rand` implementation must
@@ -111,13 +111,13 @@ provide its own synchronization.
 
 ## Cryptographic Randomness
 
-For security-sensitive output, pass `CryptoRand` to `StringWithRand` or
+For security-sensitive output, pass `CryptoRand` to `GenerateWithRand` or
 `AppendWithRand`:
 
 ```go
 g := randregex.MustCompile(`[a-zA-Z0-9_-]{32}`)
 
-token := g.StringWithRand(randregex.CryptoRand)
+token := g.GenerateWithRand(randregex.CryptoRand)
 ```
 
 `CryptoRand` uses `crypto/rand.Reader` and panics if the system cryptographic

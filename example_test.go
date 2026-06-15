@@ -13,7 +13,7 @@ func ExampleCompile() {
 		panic(err)
 	}
 
-	fmt.Println(len(g.String()))
+	fmt.Println(len(g.Generate()))
 	// Output: 10
 }
 
@@ -23,22 +23,22 @@ func ExampleCompileMaxRepeat() {
 		panic(err)
 	}
 
-	fmt.Println(g.String())
+	fmt.Println(g.Generate())
 	// Output: aaaa
 }
 
-func ExampleGenerator_StringWithRand() {
+func ExampleGenerator_GenerateWithRand() {
 	r := rand.New(rand.NewPCG(1, 2))
 	g := randregex.MustCompile(`[a-z]{8}`)
 
-	fmt.Println(g.StringWithRand(r))
+	fmt.Println(g.GenerateWithRand(r))
 	// Output: uquugbml
 }
 
 func ExampleCryptoRand() {
 	g := randregex.MustCompile(`[A-F0-9]{16}`)
 
-	fmt.Println(len(g.StringWithRand(randregex.CryptoRand)))
+	fmt.Println(len(g.GenerateWithRand(randregex.CryptoRand)))
 	// Output: 16
 }
 

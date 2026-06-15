@@ -30,7 +30,7 @@ func BenchmarkCompile(b *testing.B) {
 	}
 }
 
-func BenchmarkCompileString(b *testing.B) {
+func BenchmarkCompileGenerate(b *testing.B) {
 	for _, pattern := range benchPatterns {
 		b.Run(pattern, func(b *testing.B) {
 			for b.Loop() {
@@ -38,32 +38,32 @@ func BenchmarkCompileString(b *testing.B) {
 				if err != nil {
 					b.Fatal(err)
 				}
-				_ = g.String()
+				_ = g.Generate()
 			}
 		})
 	}
 }
 
-func BenchmarkGeneratorString(b *testing.B) {
+func BenchmarkGeneratorGenerate(b *testing.B) {
 	for _, pattern := range benchPatterns {
 		b.Run(pattern, func(b *testing.B) {
 			g := MustCompile(pattern)
 			b.ResetTimer()
 			for b.Loop() {
-				_ = g.String()
+				_ = g.Generate()
 			}
 		})
 	}
 }
 
-func BenchmarkGeneratorStringWithRand(b *testing.B) {
+func BenchmarkGeneratorGenerateWithRand(b *testing.B) {
 	for _, pattern := range benchPatterns {
 		b.Run(pattern, func(b *testing.B) {
 			g := MustCompile(pattern)
 			r := rand.New(rand.NewPCG(1, 2))
 			b.ResetTimer()
 			for b.Loop() {
-				_ = g.StringWithRand(r)
+				_ = g.GenerateWithRand(r)
 			}
 		})
 	}

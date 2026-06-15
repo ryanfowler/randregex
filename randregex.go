@@ -96,9 +96,9 @@ func MustCompileMaxRepeat(pattern string, maxRepeat int) *Generator {
 	return g
 }
 
-// String generates a pseudo-random string matching the compiled regexp.
-func (g *Generator) String() string {
-	return g.StringWithRand(defaultRand{})
+// Generate generates a pseudo-random string matching the compiled regexp.
+func (g *Generator) Generate() string {
+	return g.GenerateWithRand(defaultRand{})
 }
 
 // Append appends a pseudo-random string matching the compiled regexp to dst and
@@ -107,10 +107,10 @@ func (g *Generator) Append(dst []byte) []byte {
 	return g.AppendWithRand(dst, defaultRand{})
 }
 
-// StringWithRand generates a string matching the compiled regexp using r.
+// GenerateWithRand generates a string matching the compiled regexp using r.
 //
 // If r is shared concurrently, it must provide its own synchronization.
-func (g *Generator) StringWithRand(r Rand) string {
+func (g *Generator) GenerateWithRand(r Rand) string {
 	return string(g.AppendWithRand(nil, r))
 }
 

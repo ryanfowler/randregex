@@ -69,7 +69,7 @@ func TestGeneratedSamplesMatch(t *testing.T) {
 			re := regexp.MustCompile(`^(?:` + tt.pat + `)$`)
 			r := rand.New(rand.NewPCG(1, 2))
 			for i := 0; i < 1000; i++ {
-				s := g.StringWithRand(r)
+				s := g.GenerateWithRand(r)
 				if !re.MatchString(s) {
 					t.Fatalf("sample %d for %q did not match: %q", i, tt.pat, s)
 				}
@@ -137,7 +137,7 @@ func TestWordBoundaryMustBeGuaranteed(t *testing.T) {
 
 func TestRootNoWordBoundary(t *testing.T) {
 	g := MustCompile(`\B`)
-	got := g.String()
+	got := g.Generate()
 	if got != "" {
 		t.Fatalf(`\B generated %q, want empty string`, got)
 	}
@@ -161,7 +161,7 @@ func TestMaxRepeatSemantics(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.pat, func(t *testing.T) {
 			g := MustCompileMaxRepeat(tt.pat, tt.maxRepeat)
-			got := g.StringWithRand(rand.New(rand.NewPCG(1, 2)))
+			got := g.GenerateWithRand(rand.New(rand.NewPCG(1, 2)))
 			if len(got) != tt.wantLen {
 				t.Fatalf("len(%q) = %d, want %d", got, len(got), tt.wantLen)
 			}
@@ -189,8 +189,8 @@ func TestDeterministicOutputWithSeededRand(t *testing.T) {
 	r2 := rand.New(rand.NewPCG(1, 2))
 
 	for i := 0; i < 100; i++ {
-		s1 := g.StringWithRand(r1)
-		s2 := g.StringWithRand(r2)
+		s1 := g.GenerateWithRand(r1)
+		s2 := g.GenerateWithRand(r2)
 		if s1 != s2 {
 			t.Fatalf("sequence diverged at %d: %q != %q", i, s1, s2)
 		}
@@ -203,7 +203,7 @@ func TestCryptoRandGeneratesMatchingSamples(t *testing.T) {
 	re := regexp.MustCompile(`^(?:[a-zA-Z0-9_-]{32})$`)
 
 	for i := 0; i < 100; i++ {
-		s := g.StringWithRand(r)
+		s := g.GenerateWithRand(r)
 		if !re.MatchString(s) {
 			t.Fatalf("generated invalid sample: %q", s)
 		}
@@ -248,7 +248,7 @@ func TestConcurrentUse(t *testing.T) {
 			defer wg.Done()
 			r := rand.New(rand.NewPCG(seed, seed+1))
 			for i := 0; i < 1000; i++ {
-				s := g.StringWithRand(r)
+				s := g.GenerateWithRand(r)
 				if !re.MatchString(s) {
 					t.Errorf("generated invalid sample: %q", s)
 					return
@@ -269,7 +269,7 @@ func TestConcurrentDefaultRandUse(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for i := 0; i < 1000; i++ {
-				s := g.String()
+				s := g.Generate()
 				if !re.MatchString(s) {
 					t.Errorf("generated invalid sample: %q", s)
 					return
@@ -290,7 +290,7 @@ func TestConcurrentCryptoRandUse(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for i := 0; i < 1000; i++ {
-				s := g.StringWithRand(CryptoRand)
+				s := g.GenerateWithRand(CryptoRand)
 				if !re.MatchString(s) {
 					t.Errorf("generated invalid sample: %q", s)
 					return

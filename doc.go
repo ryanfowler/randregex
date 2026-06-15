@@ -5,8 +5,8 @@
 // and other workflows where a regexp is a compact description of valid sample
 // strings. Patterns are parsed with regexp/syntax using syntax.Perl.
 //
-// Generator values are immutable and safe for concurrent use. The String and
-// Append methods use the default pseudo-random source. StringWithRand and
+// Generator values are immutable and safe for concurrent use. The Generate and
+// Append methods use the default pseudo-random source. GenerateWithRand and
 // AppendWithRand let callers provide any Rand implementation, including a
 // seeded *math/rand/v2.Rand for reproducible output. If a Rand is shared across
 // goroutines, the Rand implementation must provide its own synchronization.
