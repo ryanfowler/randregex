@@ -12,10 +12,10 @@
 // goroutines, the Rand implementation must provide its own synchronization.
 //
 // Compile parses, validates, and converts patterns into an immutable internal
-// representation using DefaultMaxRepeat. Use CompileOptions or FromRegexp with
-// Options when a different unbounded-repeat policy is needed. Use MustCompile
-// for package-level generators when invalid patterns should be treated as
-// programmer errors.
+// representation using DefaultMaxRepeat for unbounded repetitions such as a*,
+// a+, and a{3,}. Use CompileMaxRepeat or FromRegexpMaxRepeat when a different
+// unbounded-repeat policy is needed. Use MustCompile for package-level
+// generators when invalid patterns should be treated as programmer errors.
 //
 // Generated strings are not cryptographic secrets unless callers provide a Rand
 // implementation backed by an appropriate cryptographic source, such as

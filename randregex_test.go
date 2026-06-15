@@ -61,7 +61,7 @@ func TestGeneratedSamplesMatch(t *testing.T) {
 			if maxRepeat == DefaultMaxRepeat {
 				g, err = Compile(tt.pat)
 			} else {
-				g, err = CompileOptions(tt.pat, Options{MaxRepeat: maxRepeat})
+				g, err = CompileMaxRepeat(tt.pat, maxRepeat)
 			}
 			if err != nil {
 				t.Fatalf("Compile(%q): %v", tt.pat, err)
@@ -98,13 +98,13 @@ func TestInvalidRegexPattern(t *testing.T) {
 }
 
 func TestNegativeMaxRepeat(t *testing.T) {
-	if _, err := CompileOptions(`a`, Options{MaxRepeat: -1}); err == nil {
-		t.Fatal("Compile returned nil error for negative maxRepeat")
+	if _, err := CompileMaxRepeat(`a`, -1); err == nil {
+		t.Fatal("CompileMaxRepeat returned nil error for negative maxRepeat")
 	}
 }
 
 func TestUnsupportedNoMatch(t *testing.T) {
-	_, err := FromRegexp(&syntax.Regexp{Op: syntax.OpNoMatch}, Options{MaxRepeat: DefaultMaxRepeat})
+	_, err := FromRegexp(&syntax.Regexp{Op: syntax.OpNoMatch})
 	if err == nil {
 		t.Fatal("FromRegexp returned nil error for OpNoMatch")
 	}
@@ -160,7 +160,7 @@ func TestMaxRepeatSemantics(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.pat, func(t *testing.T) {
-			g := MustCompileOptions(tt.pat, Options{MaxRepeat: tt.maxRepeat})
+			g := MustCompileMaxRepeat(tt.pat, tt.maxRepeat)
 			got := g.StringWithRand(rand.New(rand.NewPCG(1, 2)))
 			if len(got) != tt.wantLen {
 				t.Fatalf("len(%q) = %d, want %d", got, len(got), tt.wantLen)
@@ -175,7 +175,7 @@ func TestFromRegexpDoesNotMutate(t *testing.T) {
 		t.Fatal(err)
 	}
 	before := re.String()
-	if _, err := FromRegexp(re, Options{MaxRepeat: DefaultMaxRepeat}); err != nil {
+	if _, err := FromRegexp(re); err != nil {
 		t.Fatal(err)
 	}
 	if after := re.String(); after != before {
