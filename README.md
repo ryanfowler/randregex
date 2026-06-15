@@ -123,6 +123,11 @@ token := g.StringWithRand(randregex.CryptoRand)
 `CryptoRand` uses `crypto/rand.Reader` and panics if the system cryptographic
 source fails.
 
+The regular expression still determines the output entropy. `CryptoRand`
+provides an unpredictable source of randomness, but it does not make a small
+output space secure; for example, `[0-9]{6}` still has only one million
+possible values.
+
 ## Buffer Reuse
 
 `Append` and `AppendWithRand` are the allocation-conscious APIs:
